@@ -42,8 +42,8 @@
   - [x] 7.1 Test backend server startup
   - [x] 7.2 Test frontend development server
   - [x] 7.3 Run all linting and formatting checks
-  - [ ] 7.4 Create initial Git commit
-  - [ ] 7.5 Prepare for GitHub push
+  - [x] 7.4 Create initial Git commit
+  - [-] 7.5 Prepare for GitHub push
 
 ## Testing Tasks
 
