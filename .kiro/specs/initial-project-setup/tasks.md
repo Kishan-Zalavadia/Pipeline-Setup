@@ -43,13 +43,13 @@
   - [x] 7.2 Test frontend development server
   - [x] 7.3 Run all linting and formatting checks
   - [x] 7.4 Create initial Git commit
-  - [-] 7.5 Prepare for GitHub push
+  - [x] 7.5 Prepare for GitHub push
 
 ## Testing Tasks
 
 - [ ] 8. Manual Testing
-  - [ ] 8.1 Verify backend server starts without errors
-  - [ ] 8.2 Verify frontend dev server starts without errors
-  - [ ] 8.3 Verify ESLint catches code issues
-  - [ ] 8.4 Verify Prettier formats code correctly
-  - [ ] 8.5 Verify pre-commit hook blocks bad commits
+  - [x] 8.1 Verify backend server starts without errors
+  - [x] 8.2 Verify frontend dev server starts without errors
+  - [x] 8.3 Verify ESLint catches code issues
+  - [x] 8.4 Verify Prettier formats code correctly
+  - [x] 8.5 Verify pre-commit hook blocks bad commits

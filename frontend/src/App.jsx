@@ -1,11 +1,49 @@
 import './App.css';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
+import { AuthProvider, AuthContext } from './context/AuthContext';
+import { useContext } from 'react';
+import Login from './components/Login';
+import Welcome from './components/Welcome';
+
+const ProtectedRoute = ({ children }) => {
+  const { auth, loading } = useContext(AuthContext);
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>Loading...</div>
+    );
+  }
+
+  if (!auth) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
 
 function App() {
   return (
-    <div className="App">
-      <h1>Welcome to My Demo App</h1>
-      <p>Frontend is ready for development</p>
-    </div>
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/welcome"
+            element={
+              <ProtectedRoute>
+                <Welcome />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/welcome" replace />} />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
 }
 

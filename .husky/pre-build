@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running pre-build checks..."
+
+# Run linting
+echo "Running ESLint..."
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Linting failed. Build aborted."
+  exit 1
+fi
+
+# Run formatting check
+echo "Running Prettier check..."
+npm run format:check
+if [ $? -ne 0 ]; then
+  echo "❌ Formatting issues found. Build aborted."
+  exit 1
+fi
+
+echo "✅ All checks passed. Proceeding with build..."
