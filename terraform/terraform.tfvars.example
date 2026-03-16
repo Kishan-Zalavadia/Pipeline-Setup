@@ -1,0 +1,9 @@
+aws_region         = "us-west-2"
+environment        = "production"
+project_name       = "my-demo-app"
+frontend_bucket_name = "my-demo-app-frontend-prod"
+instance_type      = "t2.micro"
+key_pair_name      = "your-key-pair-name"
+allowed_ssh_cidr   = ["YOUR_IP/32"]
+github_repo        = "https://github.com/YOUR_USERNAME/Pipeline-Setup.git"
+branch             = "main"
