@@ -18,6 +18,7 @@ env:
   TF_VAR_key_pair_name: "my-demo-app-key"
   TF_VAR_github_repo: "https://github.com/Kishan-Zalavadia/Pipeline-Setup.git"
 
+
 # Permissions for AWS OIDC authentication
 permissions:
   id-token: write
@@ -70,6 +71,7 @@ jobs:
 
       - name: Export Build Artifacts
         uses: actions/upload-artifact@v4
+
         with:
           name: frontend-build
           path: frontend/dist
@@ -144,7 +146,8 @@ jobs:
       - name: Authenticate to AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
           output-env-credentials: true
@@ -157,8 +160,8 @@ jobs:
 
       - name: Frontend deployment summary
         run: |
-          echo "✅ Frontend deployed to S3"
-          echo "Bucket: ${{ env.frontend_bucket_name }}"
+          echo "✅ Frontend deployed successfully"
+          echo "URL: https://${{ env.frontend_bucket_name}}.s3.amazonaws.com"
 
   deployment-summary:
     name: Final Summary
