@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Environment
@@ -28,3 +27,4 @@ Thumbs.db
 coverage/
 
 .kiro/*
+terraform/terraform.tfvars
