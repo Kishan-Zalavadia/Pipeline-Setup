@@ -1,6 +1,6 @@
 # CloudFront module (needs OAI from S3 module)
 module "cloudfront" {
-  source = "./modules/cloudfront"
+  source = "../modules/cloudfront"
 
   project_name           = var.project_name
   environment            = var.environment
@@ -9,7 +9,7 @@ module "cloudfront" {
 
 # S3 module
 module "s3" {
-  source = "./modules/s3"
+  source = "../modules/s3"
 
   bucket_name         = var.frontend_bucket_name
   environment         = var.environment
@@ -18,7 +18,7 @@ module "s3" {
 
 # Security module
 module "security" {
-  source = "./modules/security"
+  source = "../modules/security"
 
   project_name       = var.project_name
   environment        = var.environment
@@ -28,7 +28,7 @@ module "security" {
 
 # EC2 module
 module "ec2" {
-  source = "./modules/ec2"
+  source = "../modules/ec2"
 
   project_name      = var.project_name
   environment       = var.environment
