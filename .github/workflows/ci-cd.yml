@@ -13,6 +13,11 @@ env:
   ENVIRONMENT: dev
   FRONTEND_BUCKET: my-demo-app-frontend-dev
 
+# Required permissions for AWS OIDC authentication
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   lint-and-format:
     name: Lint and Format Check
@@ -82,6 +87,8 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+          output-env-credentials: true
 
       - name: Terraform Init
         run: |
@@ -120,6 +127,8 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+          output-env-credentials: true
 
       - name: Sync frontend to S3
         run: |
