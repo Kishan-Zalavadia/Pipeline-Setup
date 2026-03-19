@@ -17,7 +17,7 @@ env:
 permissions:
   id-token: write
   contents: read
-
+  
 jobs:
   lint-and-format:
     name: Lint and Format Check
