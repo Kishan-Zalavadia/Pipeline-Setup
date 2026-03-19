@@ -27,4 +27,10 @@ Thumbs.db
 coverage/
 
 .kiro/*
-terraform/terraform.tfvars
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+tfplan
+terraform/dev/terraform.tfvars
+terraform.tfvars
