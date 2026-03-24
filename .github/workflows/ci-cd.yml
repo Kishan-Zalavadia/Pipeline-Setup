@@ -68,7 +68,6 @@ jobs:
       - name: Build Frontend Application
         run: npm run build --workspace=frontend
 
-
       - name: Upload frontend build
         uses: actions/upload-artifact@v4
 
@@ -137,7 +136,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download frontend build
+      - name: Download Build Artifacts
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
@@ -161,7 +160,6 @@ jobs:
         run: |
           echo "✅ Frontend deployed successfully"
           echo "URL: https://${{ env.frontend_bucket_name}}.s3.amazonaws.com"
-
 
   deployment-summary:
     name: Final Summary
