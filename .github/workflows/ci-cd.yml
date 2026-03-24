@@ -8,81 +8,88 @@ on:
     branches:
       - main
 
+# Global configuration: minimal exposure
 env:
   AWS_REGION: us-west-2
-  ENVIRONMENT: dev
-  FRONTEND_BUCKET: my-demo-app-frontend-dev
+  NODE_VERSION: '20'
+  TF_VAR_allowed_ssh_cidr: ${{ secrets.ALLOWED_SSH_CIDR }}
 
-# Required permissions for AWS OIDC authentication
+# Permissions for AWS OIDC authentication
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  # LINT & FORMAT: Ensure code quality before any other action
   lint-and-format:
-    name: Lint and Format Check
+    name: Code Quality Check
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm install
 
       - name: Run ESLint
         run: npm run lint
 
-      - name: Check Prettier formatting
+      - name: Check Formatting (Prettier)
         run: npm run format:check
 
+  # BUILD: Prepare frontend assets
   build:
-    name: Build Frontend Only
+    name: Build Frontend
     runs-on: ubuntu-latest
     needs: lint-and-format
-
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm install
 
-      - name: Build frontend
+      - name: Build Frontend Application
         run: npm run build --workspace=frontend
 
-      - name: Upload frontend build
+      - name: Export Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: frontend/dist
 
+  # TERRAFORM: Provison/Update Infrastructure
   terraform:
-    name: Terraform - Create Infrastructure
+    name: Infrastructure Management
     runs-on: ubuntu-latest
     needs: lint-and-format
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: dev
+    outputs:
+      s3_bucket_name: ${{ steps.exports.outputs.s3_bucket_name }}
+      frontend_url: ${{ steps.exports.outputs.frontend_url }}
+      backend_url: ${{ steps.exports.outputs.backend_url }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
 
-      - name: Configure AWS credentials
+      - name: Authenticate to AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -90,38 +97,47 @@ jobs:
           audience: sts.amazonaws.com
           output-env-credentials: true
 
-      - name: Terraform Init
+      - name: Initialize Terraform
         run: |
           cd terraform/dev
           terraform init -reconfigure
 
-      - name: Terraform Plan
+      - name: Create Execution Plan
         run: |
           cd terraform/dev
           terraform plan -out=tfplan
 
-      - name: Terraform Apply
+      - name: Apply Infrastructure Changes
         run: |
           cd terraform/dev
           terraform apply -auto-approve tfplan
 
+      - name: Capture Output Variables
+        id: exports
+        run: |
+          cd terraform/dev
+          echo "s3_bucket_name=$(terraform output -raw s3_bucket_name)" >> "$GITHUB_OUTPUT"
+          echo "frontend_url=$(terraform output -raw frontend_url)" >> "$GITHUB_OUTPUT"
+          echo "backend_url=$(terraform output -raw backend_url)" >> "$GITHUB_OUTPUT"
+
+  # DEPLOY: Sync assets to S3
   deploy-frontend:
-    name: Deploy Frontend to S3
+    name: Deploy to S3
     runs-on: ubuntu-latest
     needs: [build, terraform]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: dev
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download frontend build
+      - name: Download Build Artifacts
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
           path: frontend/dist
 
-      - name: Configure AWS credentials
+      - name: Authenticate to AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -129,9 +145,9 @@ jobs:
           audience: sts.amazonaws.com
           output-env-credentials: true
 
-      - name: Sync frontend to S3
+      - name: Sync Frontend to S3 Bucket
         run: |
-          aws s3 sync frontend/dist s3://${{ env.FRONTEND_BUCKET }} \
+          aws s3 sync frontend/dist s3://${{ needs.terraform.outputs.s3_bucket_name }} \
             --delete \
             --cache-control "public, max-age=3600"
 
@@ -141,13 +157,19 @@ jobs:
           echo "Bucket: ${{ env.FRONTEND_BUCKET }}"
 
   deployment-summary:
-    name: Deployment Summary
+    name: Final Summary
     runs-on: ubuntu-latest
-    needs: [deploy-frontend]
+    needs: [deploy-frontend, terraform]
     if: always()
-
     steps:
-      - name: Print deployment status
+      - name: Post Deployment Report
         run: |
-          echo "🚀 Deployment Pipeline Completed"
-          echo "Frontend: ${{ needs.deploy-frontend.result }}"
+          echo "🚀 DEPLOYMENT COMPLETED SUCCESSFULLY"
+          echo "-------------------------------------"
+          echo "✅ Infrastructure Status: ${{ needs.terraform.result }}"
+          echo "✅ Frontend Deploy Status: ${{ needs.deploy-frontend.result }}"
+          echo "-------------------------------------"
+          echo "🌍 ACCESS YOUR APPLICATION:"
+          echo "Frontend: ${{ needs.terraform.outputs.frontend_url }}"
+          echo "Backend API: ${{ needs.terraform.outputs.backend_url }}"
+          echo "-------------------------------------"
