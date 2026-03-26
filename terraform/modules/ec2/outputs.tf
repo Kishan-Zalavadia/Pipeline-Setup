@@ -12,3 +12,9 @@ output "backend_url" {
   description = "Backend API URL"
   value       = "http://${aws_eip.backend.public_ip}:5050"
 }
+
+output "private_key" {
+  description = "The generated private key in PEM format"
+  value       = tls_private_key.main.private_key_pem
+  sensitive   = true
+}

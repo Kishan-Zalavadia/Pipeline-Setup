@@ -59,10 +59,22 @@ resource "aws_iam_instance_profile" "backend" {
   role = aws_iam_role.backend.name
 }
 
+# Generate a new private/public key pair
+resource "tls_private_key" "main" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# Upload the Public Key to AWS
+resource "aws_key_pair" "backend" {
+  key_name   = var.key_pair_name
+  public_key = tls_private_key.main.public_key_openssh
+}
+
 resource "aws_instance" "backend" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
-  key_name      = var.key_pair_name
+  key_name      = aws_key_pair.backend.key_name
 
   vpc_security_group_ids      = [var.security_group_id]
   iam_instance_profile        = aws_iam_instance_profile.backend.name
