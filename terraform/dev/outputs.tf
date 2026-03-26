@@ -27,3 +27,9 @@ output "ec2_instance_id" {
   description = "EC2 instance ID"
   value       = module.ec2.instance_id
 }
+
+output "private_key" {
+  description = "The generated EC2 private key"
+  value       = module.ec2.private_key
+  sensitive   = true
+}
