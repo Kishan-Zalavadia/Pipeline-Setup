@@ -1,15 +1,22 @@
-resource "aws_cloudfront_origin_access_identity" "frontend" {
-  comment = "OAI for ${var.project_name}-${var.environment}"
+# ---------------------------
+# OAC (NEW)
+# ---------------------------
+resource "aws_cloudfront_origin_access_control" "frontend" {
+  name                              = "${var.project_name}-${var.environment}-oac"
+  description                       = "OAC for frontend S3 bucket"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }
 
+# ---------------------------
+# DISTRIBUTION
+# ---------------------------
 resource "aws_cloudfront_distribution" "frontend" {
   origin {
-    domain_name = var.s3_bucket_domain_name
-    origin_id   = "S3Origin"
-
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.frontend.cloudfront_access_identity_path
-    }
+    domain_name              = var.s3_bucket_regional_domain_name
+    origin_id                = "S3Origin"
+    origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
   enabled             = true
@@ -17,25 +24,27 @@ resource "aws_cloudfront_distribution" "frontend" {
   default_root_object = "index.html"
 
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3Origin"
+    target_origin_id       = "S3Origin"
+    viewer_protocol_policy = "redirect-to-https"
+
+    allowed_methods = ["GET", "HEAD", "OPTIONS"]
+    cached_methods  = ["GET", "HEAD"]
+
+    compress = true
 
     forwarded_values {
       query_string = false
-
       cookies {
         forward = "none"
       }
     }
 
-    viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
+    min_ttl     = 0
+    default_ttl = 3600
+    max_ttl     = 86400
   }
 
-  # Custom error response for SPA routing
+  # ✅ SPA routing fix
   custom_error_response {
     error_code            = 404
     response_code         = 200
@@ -57,4 +66,31 @@ resource "aws_cloudfront_distribution" "frontend" {
     Name        = "Frontend Distribution"
     Environment = var.environment
   }
+}
+
+# ---------------------------
+# ✅ S3 BUCKET POLICY (CRITICAL)
+# ---------------------------
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = var.s3_bucket_id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowCloudFrontOAC"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${var.s3_bucket_arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.frontend.arn
+          }
+        }
+      }
+    ]
+  })
 }
