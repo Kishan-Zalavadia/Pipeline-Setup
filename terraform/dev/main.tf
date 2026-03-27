@@ -13,7 +13,7 @@ module "s3" {
 
   bucket_name         = var.frontend_bucket_name
   environment         = var.environment
-  cloudfront_oai_arn  = module.cloudfront.oai_arn
+  cloudfront_oai_iam_arn   = module.cloudfront.cloudfront_oai_iam_arn
 }
 
 # Security module
