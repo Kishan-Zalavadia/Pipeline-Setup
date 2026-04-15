@@ -22,16 +22,31 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
 # DISTRIBUTION
 # ---------------------------
 resource "aws_cloudfront_distribution" "frontend" {
+  # Origin for S3 (Frontend)
   origin {
     domain_name              = var.s3_bucket_regional_domain_name
     origin_id                = "S3Origin"
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
+  # Origin for EC2 (Backend)
+  origin {
+    domain_name = var.backend_domain_name # This will be the EIP from EC2 module
+    origin_id   = "EC2Origin"
+
+    custom_origin_config {
+      http_port              = 5050
+      https_port             = 443
+      origin_protocol_policy = "http-only" # EC2 is running HTTP on 5050
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
+  # Default Behavior (S3 Frontend)
   default_cache_behavior {
     target_origin_id       = "S3Origin"
     viewer_protocol_policy = "redirect-to-https"
@@ -53,7 +68,51 @@ resource "aws_cloudfront_distribution" "frontend" {
     max_ttl     = 86400
   }
 
-  # ✅ SPA routing fix
+  # Cache Behavior for /auth/* (EC2 Backend)
+  ordered_cache_behavior {
+    path_pattern     = "/auth/*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "EC2Origin"
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Origin", "Authorization"] # Crucial for CORS and Auth
+      cookies {
+        forward = "all"
+      }
+    }
+
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  # Cache Behavior for /api/* (EC2 Backend)
+  ordered_cache_behavior {
+    path_pattern     = "/api/*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "EC2Origin"
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Origin", "Authorization"]
+      cookies {
+        forward = "all"
+      }
+    }
+
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  # SPA routing fix
   custom_error_response {
     error_code            = 404
     response_code         = 200
@@ -78,7 +137,7 @@ resource "aws_cloudfront_distribution" "frontend" {
 }
 
 # ---------------------------
-# ✅ S3 BUCKET POLICY (CRITICAL)
+# S3 BUCKET POLICY
 # ---------------------------
 resource "aws_s3_bucket_policy" "frontend" {
   bucket = var.s3_bucket_id
