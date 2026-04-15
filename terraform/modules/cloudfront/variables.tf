@@ -8,7 +8,17 @@ variable "environment" {
   type        = string
 }
 
-variable "s3_bucket_domain_name" {
-  description = "S3 bucket domain name"
+variable "s3_bucket_regional_domain_name" {
+  description = "S3 bucket regional domain name"
+  type        = string
+}
+
+variable "s3_bucket_id" {
+  description = "S3 bucket ID"
+  type        = string
+}
+
+variable "s3_bucket_arn" {
+  description = "S3 bucket ARN"
   type        = string
 }

@@ -1,29 +1,30 @@
-# CloudFront module (needs OAI from S3 module)
+# CloudFront module (OAC setup)
 module "cloudfront" {
   source = "../modules/cloudfront"
 
-  project_name           = var.project_name
-  environment            = var.environment
-  s3_bucket_domain_name  = module.s3.bucket_domain_name
+  project_name                   = var.project_name
+  environment                    = var.environment
+  s3_bucket_regional_domain_name = module.s3.bucket_domain_name
+  s3_bucket_id                   = module.s3.bucket_id
+  s3_bucket_arn                  = module.s3.bucket_arn
 }
 
 # S3 module
 module "s3" {
   source = "../modules/s3"
 
-  bucket_name         = var.frontend_bucket_name
-  environment         = var.environment
-  cloudfront_oai_iam_arn   = module.cloudfront.cloudfront_oai_iam_arn
+  bucket_name = var.frontend_bucket_name
+  environment = var.environment
 }
 
 # Security module
 module "security" {
   source = "../modules/security"
 
-  project_name       = var.project_name
-  environment        = var.environment
-  allowed_ssh_cidr   = var.allowed_ssh_cidr
-  backend_port       = var.backend_port
+  project_name     = var.project_name
+  environment      = var.environment
+  allowed_ssh_cidr = var.allowed_ssh_cidr
+  backend_port     = var.backend_port
 }
 
 # EC2 module
