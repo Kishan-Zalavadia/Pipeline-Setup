@@ -7,7 +7,7 @@ module "cloudfront" {
   s3_bucket_regional_domain_name = module.s3.bucket_domain_name
   s3_bucket_id                   = module.s3.bucket_id
   s3_bucket_arn                  = module.s3.bucket_arn
-  backend_domain_name            = module.ec2.public_dns
+  backend_domain_name            = module.ec2.public_ip
 }
 
 # S3 module
