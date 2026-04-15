@@ -8,6 +8,11 @@ output "public_ip" {
   value       = aws_eip.backend.public_ip
 }
 
+output "public_dns" {
+  description = "EC2 public DNS"
+  value       = aws_eip.backend.public_dns
+}
+
 output "backend_url" {
   description = "Backend API URL"
   value       = "http://${aws_eip.backend.public_ip}:5050"
