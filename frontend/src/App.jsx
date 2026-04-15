@@ -9,6 +9,7 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { useContext } from 'react';
 import Login from './components/Login';
 import Welcome from './components/Welcome';
+import NotFound from './components/NotFound';
 
 const ProtectedRoute = ({ children }) => {
   const { auth, loading } = useContext(AuthContext);
@@ -41,6 +42,8 @@ function App() {
             }
           />
           <Route path="/" element={<Navigate to="/welcome" replace />} />
+          {/* Catch-all route for 404 */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>
     </Router>
