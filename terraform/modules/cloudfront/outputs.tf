@@ -17,3 +17,8 @@ output "oac_id" {
   description = "CloudFront Origin Access Control ID"
   value       = aws_cloudfront_origin_access_control.frontend.id
 }
+
+output "cloudfront_oai_iam_arn" {
+  description = "Legacy OAI IAM ARN"
+  value       = aws_cloudfront_origin_access_identity.frontend.iam_arn
+}

@@ -1,4 +1,13 @@
 # ---------------------------
+# LEGACY OAI (Migration Support)
+# ---------------------------
+# We keep this temporarily to avoid "InUse" errors during the migration to OAC.
+# Once the distribution update is finished, this can be safely removed.
+resource "aws_cloudfront_origin_access_identity" "frontend" {
+  comment = "Legacy OAI for ${var.project_name}-${var.environment}"
+}
+
+# ---------------------------
 # OAC (NEW)
 # ---------------------------
 resource "aws_cloudfront_origin_access_control" "frontend" {
