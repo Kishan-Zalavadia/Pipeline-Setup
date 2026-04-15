@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 jobs:
-  # LINT & FORMAT: Ensure code quality before any other action
+  # LINT & FORMAT
   lint-and-format:
     name: Code Quality Check
     runs-on: ubuntu-latest
@@ -70,7 +70,6 @@ jobs:
 
       - name: Upload frontend build
         uses: actions/upload-artifact@v4
-
         with:
           name: frontend-build
           path: frontend/dist
@@ -86,6 +85,8 @@ jobs:
       s3_bucket_name: ${{ steps.exports.outputs.s3_bucket_name }}
       frontend_url: ${{ steps.exports.outputs.frontend_url }}
       backend_url: ${{ steps.exports.outputs.backend_url }}
+      distribution_id: ${{ steps.exports.outputs.distribution_id }}
+      instance_id: ${{ steps.exports.outputs.instance_id }}
 
     steps:
       - name: Checkout Repository
@@ -124,10 +125,12 @@ jobs:
           echo "s3_bucket_name=$(terraform output -raw s3_bucket_name)" >> "$GITHUB_OUTPUT"
           echo "frontend_url=$(terraform output -raw frontend_url)" >> "$GITHUB_OUTPUT"
           echo "backend_url=$(terraform output -raw backend_url)" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$(terraform output -raw cloudfront_distribution_id)" >> "$GITHUB_OUTPUT"
+          echo "instance_id=$(terraform output -raw ec2_instance_id)" >> "$GITHUB_OUTPUT"
 
-  # DEPLOY: Sync assets to S3
+  # DEPLOY FRONTEND: Sync assets to S3 + Invalidate CloudFront
   deploy-frontend:
-    name: Deploy to S3
+    name: Deploy Frontend
     runs-on: ubuntu-latest
     needs: [build, terraform]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -156,25 +159,61 @@ jobs:
             --delete \
             --cache-control "public, max-age=3600"
 
-      - name: Frontend deployment summary
+      - name: Invalidate CloudFront Cache
         run: |
-          echo "✅ Frontend deployed successfully"
-          echo "URL: https://${{ env.frontend_bucket_name}}.s3.amazonaws.com"
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ needs.terraform.outputs.distribution_id }} \
+            --paths "/*"
+
+  # DEPLOY BACKEND: Update code on EC2 via SSM
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    needs: [terraform]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: dev
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+          output-env-credentials: true
+
+      - name: Update Backend Code on EC2
+        run: |
+          INSTANCE_ID="${{ needs.terraform.outputs.instance_id }}"
+          aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Update backend code" \
+            --parameters 'commands=[
+              "cd /home/ubuntu/app",
+              "git fetch origin",
+              "git reset --hard origin/${{ env.branch || 'main' }}",
+              "npm install",
+              "pm2 restart all || pm2 start backend/server.js --name \"backend\""
+            ]'
 
   deployment-summary:
     name: Final Summary
     runs-on: ubuntu-latest
-    needs: [deploy-frontend, terraform]
+    needs: [deploy-frontend, deploy-backend, terraform]
     if: always()
     steps:
       - name: Post Deployment Report
         run: |
-          echo "🚀 DEPLOYMENT COMPLETED SUCCESSFULLY"
+          echo "🚀 DEPLOYMENT COMPLETED"
           echo "-------------------------------------"
-          echo "✅ Infrastructure Status: ${{ needs.terraform.result }}"
-          echo "✅ Frontend Deploy Status: ${{ needs.deploy-frontend.result }}"
+          echo "✅ Infrastructure: ${{ needs.terraform.result }}"
+          echo "✅ Frontend Status: ${{ needs.deploy-frontend.result }}"
+          echo "✅ Backend Status: ${{ needs.deploy-backend.result }}"
           echo "-------------------------------------"
           echo "🌍 ACCESS YOUR APPLICATION:"
-          echo "Frontend: ${{ needs.terraform.outputs.frontend_url }}"
-          echo "Backend API: ${{ needs.terraform.outputs.backend_url }}"
+          echo "Main URL: ${{ needs.terraform.outputs.frontend_url }}"
+          echo "API Base: ${{ needs.terraform.outputs.frontend_url }}/auth"
           echo "-------------------------------------"

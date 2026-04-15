@@ -22,3 +22,8 @@ variable "s3_bucket_arn" {
   description = "S3 bucket ARN"
   type        = string
 }
+
+variable "backend_domain_name" {
+  description = "Backend domain name (EC2 EIP)"
+  type        = string
+}
